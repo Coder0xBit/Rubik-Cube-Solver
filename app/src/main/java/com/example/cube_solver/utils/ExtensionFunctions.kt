@@ -21,10 +21,10 @@ fun String.isEmptyOrNull(): Boolean {
 
 fun String.isNotEmptyOrNull() = isEmptyOrNull().not()
 
-fun String.toSafeInt(defaultValue : Int = -1) : Int {
+fun String.toSafeInt(defaultValue: Int = -1): Int {
     return try {
         toInt()
-    }catch (e : Exception) {
+    } catch (e: Exception) {
         defaultValue
     }
 }
@@ -68,4 +68,86 @@ fun FloatArray.log(tag: String = "message") {
     }
 
     Log.e(tag, message)
+}
+
+
+fun <T> List<List<T>>.log(tag: String = "message") {
+    val message = buildString {
+        this@log.forEach { row ->
+            append("[")
+            row.forEachIndexed { index, element ->
+                append(element.toString())
+                if (index != lastIndex) {
+                    append("  ")
+                }
+            }
+            append("]")
+            appendLine()
+        }
+    }
+    Log.e(tag, message)
+}
+
+fun List<Int>.logList(tag: String = "message") {
+    val message = buildString {
+        this@logList.forEach {
+            append(it.toString())
+            append("  ")
+        }
+    }
+    Log.e(tag, message)
+}
+
+fun <T> List<T>.toMatrix(rows: Int, cols: Int): List<List<T>> {
+    require(this.size == rows * cols) { "List size must be exactly $rows x $cols = ${rows * cols}." }
+    return List(rows) { row ->
+        List(cols) { col -> this[row * cols + col] }
+    }
+}
+
+fun <T> List<T>.toSquareMatrix(size: Int): List<List<T>> {
+    require(this.size == size * size) { "Can not create Square Matrix" }
+    return toMatrix(rows = size, cols = size)
+}
+
+fun <T> List<List<T>>.toFlatList(): List<T> {
+    val list = mutableListOf<T>()
+    forEach { list.addAll(it) }
+    return list
+}
+
+fun <T> List<List<T>>.rotateClockwise(rotationCount: Int): List<List<T>> {
+    var result = this
+    repeat(rotationCount) {
+        result = result.rotateClockwiseOnce()
+    }
+    return result
+}
+
+fun <T> List<List<T>>.rotateCounterclockwise(rotationCount: Int): List<List<T>> {
+    var result = this
+    repeat(rotationCount) {
+        result = result.rotateCounterclockwiseOnce()
+    }
+    return result
+}
+
+fun <T> List<List<T>>.rotateClockwiseOnce(): List<List<T>> {
+    val rows = this.size
+    val cols = this[0].size
+    return List(cols) { col ->
+        List(rows) { row ->
+            this[rows - row - 1][col]
+        }
+    }
+}
+
+fun <T> List<List<T>>.rotateCounterclockwiseOnce(): List<List<T>> {
+    val rows = this.size
+    val cols = this[0].size
+    return List(cols) { col ->
+        List(rows) { row ->
+            this[row][cols - col - 1]
+        }
+    }
 }

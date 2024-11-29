@@ -58,7 +58,7 @@ class RubiksCubeViewer(
 
         coroutineScope.launch {
             modelLoader.makeFrontRed()
-            delay(5000)
+            modelLoader.makeUpYellow()
             rubiksCubeManager.test()
         }
     }

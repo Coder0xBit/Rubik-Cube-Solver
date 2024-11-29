@@ -3,13 +3,22 @@ package com.example.cube_solver.rubiksCube
 import android.animation.Animator
 import android.animation.Animator.AnimatorListener
 import android.animation.ValueAnimator
+import android.util.Log
 import android.view.animation.LinearInterpolator
+import com.example.cube_solver.utils.log
+import com.example.cube_solver.utils.logList
+import com.example.cube_solver.utils.rotateClockwise
+import com.example.cube_solver.utils.rotateCounterclockwise
+import com.example.cube_solver.utils.toFlatList
+import com.example.cube_solver.utils.toMatrix
 import com.example.cube_solver.utils.toSafeInt
+import com.example.cube_solver.utils.toSquareMatrix
 import com.google.android.filament.utils.Float3
 import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.rotation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import java.util.LinkedList
@@ -228,7 +237,7 @@ class RubiksCubeManager(val modelViewer: ModelViewer, val coroutineScope: Corout
                 val finalRotation = currentRotation + move.rotationCount * ONE_MOVE_ROTATION
 
                 val animator = ValueAnimator.ofFloat(0f, finalRotation).apply {
-                    duration = 1000L
+                    duration = 5000L
                     interpolator = LinearInterpolator()
 
                     addUpdateListener { animation ->
@@ -248,8 +257,10 @@ class RubiksCubeManager(val modelViewer: ModelViewer, val coroutineScope: Corout
                         override fun onAnimationStart(animation: Animator) {}
 
                         override fun onAnimationEnd(animation: Animator) {
-                            updateCubeRepresentation(move = move)
-                            coroutineScope.launch { onAnimationEnd() }
+                            coroutineScope.launch {
+                                updateCubeRepresentation(move = move)
+                                onAnimationEnd()
+                            }
                         }
 
                         override fun onAnimationCancel(animation: Animator) {}
@@ -267,68 +278,25 @@ class RubiksCubeManager(val modelViewer: ModelViewer, val coroutineScope: Corout
         val cubiesIdentifiers = mutableListOf<Int>()
         move.face.indexIdentifiers.forEach { cubiesIdentifiers.add(cubeModelRepresentation[it]) }
         require(cubiesIdentifiers.size == 9) { "just got screwed cubiesIdentifiers" }
-        val matrix = cubiesIdentifiers.toMatrix(3, 3)
+        val matrix = cubiesIdentifiers.toSquareMatrix(size = 3)
+        matrix.log(tag = "Before Transformation")
         val rotatedMatrix = when (move.rubiksMoveType) {
             RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
             RubiksMoveType.ANTI_CLOCKWISE -> matrix.rotateCounterclockwise(move.rotationCount)
             RubiksMoveType.NONE -> listOf(listOf())
         }
+        rotatedMatrix.log(tag = "After Transformation")
         val flattenList = rotatedMatrix.toFlatList()
+        flattenList.logList(tag = "Flatten list")
         move.face.indexIdentifiers.forEachIndexed { index, identifier ->
             cubeModelRepresentation[identifier] = flattenList[index]
         }
-    }
-
-    private fun <T> List<T>.toMatrix(rows: Int, cols: Int): List<List<T>> {
-        require(this.size == rows * cols) { "List size must be exactly $rows x $cols = ${rows * cols}." }
-        return List(rows) { row ->
-            List(cols) { col -> this[row * cols + col] }
-        }
-    }
-
-    fun <T> List<List<T>>.toFlatList(): List<T> {
-        return this.flatten()
-    }
-
-    fun <T> List<List<T>>.rotateClockwise(rotationCount: Int): List<List<T>> {
-        var result = this
-        repeat(rotationCount) {
-            result = result.rotateClockwiseOnce()
-        }
-        return result
-    }
-
-    fun <T> List<List<T>>.rotateCounterclockwise(rotationCount: Int): List<List<T>> {
-        var result = this
-        repeat(rotationCount) {
-            result = result.rotateCounterclockwiseOnce()
-        }
-        return result
-    }
-
-    private fun <T> List<List<T>>.rotateClockwiseOnce(): List<List<T>> {
-        val rows = this.size
-        val cols = this[0].size
-        return List(cols) { col ->
-            List(rows) { row ->
-                this[rows - row - 1][col]
-            }
-        }
-    }
-
-    private fun <T> List<List<T>>.rotateCounterclockwiseOnce(): List<List<T>> {
-        val rows = this.size
-        val cols = this[0].size
-        return List(cols) { col ->
-            List(rows) { row ->
-                this[row][cols - col - 1]
-            }
-        }
+        cubeModelRepresentation.logList(tag = "Cube Representation")
     }
 
     fun startSolving() {
         val listOfMove =
-            mutableListOf(RubiksMove.B, RubiksMove.U, RubiksMove.L, RubiksMove.U, RubiksMove.F_TWO)
+            mutableListOf(RubiksMove.D , RubiksMove.F)
 
         movesLinkedList.addAll(listOfMove)
         startCollectionOfMove()
@@ -339,6 +307,7 @@ class RubiksCubeManager(val modelViewer: ModelViewer, val coroutineScope: Corout
 
     private suspend fun emitMove() {
         val move = movesLinkedList.poll() ?: RubiksMove.NONE
+        delay(15000)
         rubiksMoves.emit(move)
     }
 
@@ -355,5 +324,6 @@ class RubiksCubeManager(val modelViewer: ModelViewer, val coroutineScope: Corout
     fun test() {
         startSolving()
     }
+
 }
 
