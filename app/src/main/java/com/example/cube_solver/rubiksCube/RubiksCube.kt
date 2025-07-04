@@ -1,13 +1,15 @@
 package com.example.cube_solver.rubiksCube
 
+import com.example.cube_solver.rubiksCube.RubiksCubeManager.RubiksCubeFace
 import com.example.cube_solver.utils.toSafeInt
+import com.google.android.filament.utils.Float3
 
 object RubiksCube {
     val numberFindingRegex = Regex("^(\\d+)_.*")
     val cubeFindingRegex = Regex("^\\d+_(?i)(Front|Back|Right|Left|Up|Down)$")
 }
 
-/*
+/**
  this enum is providing hardcoded array of indentifiers for faces and each individual cubies (from 3d model look up in blender)
  FRONT_CUBIES are 9 each individual cubes facing front
  MIDDLE_CUBIES are 8 each individual cubes in middle of Cube
@@ -26,4 +28,162 @@ enum class Rubiks(val identifiers: MutableList<Int>) {
         val initialCubieIdentifiers =
             FRONT_CUBIES.identifiers + MIDDLE_CUBIES.identifiers + BACK_CUBIES.identifiers
     }
+}
+
+enum class RubiksMoveType {
+    NONE, CLOCKWISE, ANTI_CLOCKWISE
+}
+
+enum class RubiksMove(
+    val value: String,
+    val face: RubiksCubeFace,
+    val axis: Float3,
+    val rotationCount: Int,
+    val rubiksMoveType: RubiksMoveType
+) {
+    NONE(
+        value = "",
+        face = RubiksCubeFace.NONE,
+        axis = Float3(),
+        rotationCount = 0,
+        rubiksMoveType = RubiksMoveType.NONE
+    ),
+
+    // Front Face Rotations
+    F(
+        value = "F",
+        face = RubiksCubeFace.FRONT,
+        axis = Float3(x = 1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    F_APOSTROPHE(
+        value = "F'",
+        face = RubiksCubeFace.FRONT,
+        axis = Float3(x = -1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    F_TWO(
+        value = "F2",
+        face = RubiksCubeFace.FRONT,
+        axis = Float3(x = 1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+
+    // Back Face Rotations
+    B(
+        value = "B",
+        face = RubiksCubeFace.BACK,
+        axis = Float3(x = -1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    B_APOSTROPHE(
+        value = "B'",
+        face = RubiksCubeFace.BACK,
+        axis = Float3(x = 1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    B_TWO(
+        value = "B2",
+        face = RubiksCubeFace.BACK,
+        axis = Float3(x = -1.0f, y = 0.0f, z = 0.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+
+    // Left Face Rotations
+    L(
+        value = "L",
+        face = RubiksCubeFace.LEFT,
+        axis = Float3(x = 0.0f, y = 0.0f, z = -1.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    L_APOSTROPHE(
+        value = "L'",
+        face = RubiksCubeFace.LEFT,
+        axis = Float3(x = 1.0f, y = 0.0f, z = 1.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    L_TWO(
+        value = "L2",
+        face = RubiksCubeFace.LEFT,
+        axis = Float3(x = 0.0f, y = 0.0f, z = -1.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+
+    // Right Face Rotations
+    R(
+        value = "R",
+        face = RubiksCubeFace.RIGHT,
+        axis = Float3(x = 0.0f, y = 0.0f, z = 1.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    R_APOSTROPHE(
+        value = "R'",
+        face = RubiksCubeFace.RIGHT,
+        axis = Float3(x = 0.0f, y = 0.0f, z = -1.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    R_TWO(
+        value = "R2",
+        face = RubiksCubeFace.RIGHT,
+        axis = Float3(x = 0.0f, y = 0.0f, z = 1.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+
+    // Up Face Rotations
+    U(
+        value = "U",
+        face = RubiksCubeFace.UP,
+        axis = Float3(x = 0.0f, y = -1.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    U_APOSTROPHE(
+        value = "U'",
+        face = RubiksCubeFace.UP,
+        axis = Float3(x = 0.0f, y = 1.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    U_TWO(
+        value = "U2",
+        face = RubiksCubeFace.UP,
+        axis = Float3(x = 0.0f, y = -1.0f, z = 0.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+
+    // Down Face Rotations
+    D(
+        value = "D",
+        face = RubiksCubeFace.BOTTOM,
+        axis = Float3(x = 0.0f, y = 1.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    ),
+    D_APOSTROPHE(
+        value = "D'",
+        face = RubiksCubeFace.BOTTOM,
+        axis = Float3(x = 0.0f, y = -1.0f, z = 0.0f),
+        rotationCount = 1,
+        rubiksMoveType = RubiksMoveType.ANTI_CLOCKWISE
+    ),
+    D_TWO(
+        value = "D2",
+        face = RubiksCubeFace.BOTTOM,
+        axis = Float3(x = 0.0f, y = 1.0f, z = 0.0f),
+        rotationCount = 2,
+        rubiksMoveType = RubiksMoveType.CLOCKWISE
+    );
 }
