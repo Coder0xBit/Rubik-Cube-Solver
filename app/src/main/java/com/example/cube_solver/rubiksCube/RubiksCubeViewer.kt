@@ -1,18 +1,16 @@
+package com.example.cube_solver.rubiksCube
+
 import android.content.Context
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.SurfaceView
 import android.view.View
 import com.example.cube_solver.config.ApplicationConfig.defaultCubePosition
-import com.example.cube_solver.rubiksCube.CubeFace
-import com.example.cube_solver.rubiksCube.ModelLoader
-import com.example.cube_solver.rubiksCube.RubiksCubeManager
 import com.example.cube_solver.utils.isNotEmptyOrNull
 import com.example.cube_solver.utils.log
 import com.google.android.filament.utils.Manipulator
 import com.google.android.filament.utils.ModelViewer
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -46,6 +44,7 @@ class RubiksCubeViewer(
     init {
 
         modelViewer = ModelViewer(surfaceView, manipulator = cameraManipulator)
+
         rubiksCubeManager =
             RubiksCubeManager(modelViewer = modelViewer, coroutineScope = coroutineScope)
         modelLoader = ModelLoader(
@@ -53,12 +52,10 @@ class RubiksCubeViewer(
             modelViewer = modelViewer
         )
 
-        modelLoader.loadGlb("GrayRubiksCube")
-        modelLoader.loadSkyBox("studio")
+        modelLoader.loadGlb("RubiksCubeColored")
+        modelLoader.loadSkyBox("cloud")
 
         coroutineScope.launch {
-            modelLoader.makeFrontRed()
-            modelLoader.makeUpYellow()
             rubiksCubeManager.test()
         }
     }

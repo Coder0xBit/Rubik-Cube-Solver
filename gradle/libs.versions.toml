@@ -1,5 +1,7 @@
 [versions]
-agp = "8.3.2"
+activityCompose = "1.10.1"
+agp = "8.7.2"
+composeBom = "2025.06.01"
 kotlin = "1.9.21"
 kotlin_kapt = "1.9.0-RC"
 coreKtx = "1.13.1"
@@ -7,11 +9,26 @@ junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
+lifecycleViewmodelCompose = "2.9.1"
 material = "1.12.0"
 filament-version = "1.52.0"
+runtimeAndroid = "1.8.3"
 
 [libraries]
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-adaptive = { module = "androidx.compose.material3.adaptive:adaptive" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-foundation = { module = "androidx.compose.foundation:foundation" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+androidx-material3 = { module = "androidx.compose.material3:material3" }
+androidx-ui = { module = "androidx.compose.ui:ui" }
+androidx-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+androidx-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -20,6 +37,7 @@ material = { group = "com.google.android.material", name = "material", version.r
 filament-android = {group = "com.google.android.filament" , name="filament-android" , version.ref = "filament-version"}
 filament-utils-android = {group = "com.google.android.filament" , name="filament-utils-android" , version.ref = "filament-version"}
 filament-gltf-io = {group = "com.google.android.filament" , name="gltfio-android" , version.ref = "filament-version"}
+androidx-runtime-android = { group = "androidx.compose.runtime", name = "runtime-android", version.ref = "runtimeAndroid" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

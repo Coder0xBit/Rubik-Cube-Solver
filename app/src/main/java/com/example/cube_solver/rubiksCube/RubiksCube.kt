@@ -6,7 +6,6 @@ import com.google.android.filament.utils.Float3
 
 object RubiksCube {
     val numberFindingRegex = Regex("^(\\d+)_.*")
-    val cubeFindingRegex = Regex("^\\d+_(?i)(Front|Back|Right|Left|Up|Down)$")
 }
 
 /**

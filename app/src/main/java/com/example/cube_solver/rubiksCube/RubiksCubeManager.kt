@@ -82,7 +82,7 @@ class RubiksCubeManager(
             RotatingCubie(entity, initialTransform)
         }
 
-        val animator = ValueAnimator.ofFloat(0f, ONE_MOVE_ROTATION).apply {
+        val animator = ValueAnimator.ofFloat(0f, move.rotationCount * ONE_MOVE_ROTATION).apply {
             duration = 1000L
             interpolator = AccelerateInterpolator()
 
@@ -140,7 +140,7 @@ class RubiksCubeManager(
         }
 
     fun startSolving() {
-        movesQueue.addAll(listOf(RubiksMove.D, RubiksMove.D, RubiksMove.F))
+        movesQueue.addAll(listOf(RubiksMove.D, RubiksMove.D_TWO, RubiksMove.F, RubiksMove.B))
         coroutineScope.launch {
             emitNextMove()
         }
