@@ -4,7 +4,6 @@ import android.animation.Animator
 import android.animation.Animator.AnimatorListener
 import android.animation.ValueAnimator
 import android.view.animation.AccelerateInterpolator
-import android.view.animation.LinearInterpolator
 import com.example.cube_solver.utils.rotateClockwise
 import com.example.cube_solver.utils.rotateCounterclockwise
 import com.example.cube_solver.utils.toFlatList
@@ -12,32 +11,22 @@ import com.example.cube_solver.utils.toSafeInt
 import com.example.cube_solver.utils.toSquareMatrix
 import com.google.android.filament.EntityInstance
 import com.google.android.filament.TransformManager
+import com.google.android.filament.gltfio.FilamentAsset
 import com.google.android.filament.utils.Float3
 import com.google.android.filament.utils.Mat4
-import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.rotation
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.LinkedList
 
 class RubiksCubeManager(
-    private val modelViewer: ModelViewer,
-    private val coroutineScope: CoroutineScope
+    private val transformManager: TransformManager,
 ) {
 
     private val cubeModelRepresentation = Rubiks.initialCubieIdentifiers.toMutableList()
-    private val rubiksMoves = MutableSharedFlow<RubiksMove>(extraBufferCapacity = 1)
-    private val transformManager by lazy { modelViewer.engine.transformManager }
 
     companion object {
         const val ONE_MOVE_ROTATION = 90f
     }
-
-    private val movesQueue = LinkedList<RubiksMove>()
 
     enum class RubiksCubeFace(val indexIdentifiers: List<Int>) {
         FRONT(listOf(0, 1, 2, 3, 4, 5, 6, 7, 8)),
@@ -55,25 +44,31 @@ class RubiksCubeManager(
         return cubeFace.indexIdentifiers.any { cubeModelRepresentation[it] == leadingNumber }
     }
 
-    private fun getEntityInstancesFromFace(face: RubiksCubeFace): List<Int> {
+    private fun getEntityInstancesFromFace(asset: FilamentAsset, face: RubiksCubeFace): List<Int> {
         val entitiesToRotate = mutableListOf<Int>()
-        modelViewer.asset?.let { asset ->
-            asset.renderableEntities.forEachIndexed { _, renderableEntity ->
-                val entityName = asset.getName(renderableEntity)
-                if (entityName into face) {
-                    entitiesToRotate.add(renderableEntity)
-                }
+        asset.renderableEntities.forEachIndexed { _, renderableEntity ->
+            val entityName = asset.getName(renderableEntity)
+            if (entityName into face) {
+                entitiesToRotate.add(renderableEntity)
             }
         }
         return entitiesToRotate
     }
 
-    private fun playMove(move: RubiksMove, onAnimationEnd: suspend CoroutineScope.() -> Unit) {
-        val entitiesToRotate = getEntityInstancesFromFace(move.face)
+    fun playMove(
+        asset: FilamentAsset,
+        move: RubiksMove,
+        scope: CoroutineScope,
+        onAnimationEnd: suspend CoroutineScope.() -> Unit
+    ) {
 
-        if (entitiesToRotate.isEmpty()) {
-            coroutineScope.launch { onAnimationEnd() }
-            return
+        val entitiesToRotate = getEntityInstancesFromFace(asset, move.face)
+
+        if (move == RubiksMove.NONE || entitiesToRotate.isEmpty()) {
+            scope.launch {
+                onAnimationEnd()
+                return@launch
+            }
         }
 
         val rotatingCubies = entitiesToRotate.map { entity ->
@@ -95,9 +90,10 @@ class RubiksCubeManager(
                 override fun onAnimationStart(animation: Animator) {}
 
                 override fun onAnimationEnd(animation: Animator) {
-                    coroutineScope.launch {
+                    scope.launch {
                         updateCubeRepresentation(move = move)
                         onAnimationEnd()
+                        return@launch
                     }
                 }
 
@@ -124,45 +120,22 @@ class RubiksCubeManager(
         }
     }
 
-    private suspend fun updateCubeRepresentation(move: RubiksMove) =
-        withContext(Dispatchers.Default) {
-            val ids = move.face.indexIdentifiers.map { cubeModelRepresentation[it] }
-            val matrix = ids.toSquareMatrix(3)
-            val rotated = when (move.rubiksMoveType) {
-                RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
-                RubiksMoveType.ANTI_CLOCKWISE -> matrix.rotateCounterclockwise(move.rotationCount)
-                RubiksMoveType.NONE -> matrix
-            }
-            val flatten = rotated.toFlatList()
-            move.face.indexIdentifiers.forEachIndexed { i, id ->
-                cubeModelRepresentation[id] = flatten[i]
-            }
+    private fun updateCubeRepresentation(move: RubiksMove) {
+        val ids = move.face.indexIdentifiers.map { cubeModelRepresentation[it] }
+        val matrix = ids.toSquareMatrix(3)
+        val rotated = when (move.rubiksMoveType) {
+            RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
+            RubiksMoveType.ANTI_CLOCKWISE -> matrix.rotateCounterclockwise(move.rotationCount)
+            RubiksMoveType.NONE -> matrix
         }
-
-    fun startSolving() {
-        movesQueue.addAll(listOf(RubiksMove.D, RubiksMove.D_TWO, RubiksMove.F, RubiksMove.B))
-        coroutineScope.launch {
-            emitNextMove()
-        }
-        coroutineScope.launch {
-            rubiksMoves.collect { move ->
-                playMove(move) {
-                    emitNextMove()
-                }
-            }
+        val flatten = rotated.toFlatList()
+        move.face.indexIdentifiers.forEachIndexed { i, id ->
+            cubeModelRepresentation[id] = flatten[i]
         }
     }
-
-    private suspend fun emitNextMove() {
-        movesQueue.poll()?.let { move ->
-            delay(200)
-            rubiksMoves.emit(move)
-        }
-    }
-
-    fun test() = startSolving()
 
     data class RotatingCubie(val entity: Int, val initialTransform: Mat4)
 }
+
 
 

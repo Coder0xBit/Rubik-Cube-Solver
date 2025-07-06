@@ -5,32 +5,25 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.SurfaceView
 import android.view.View
-import com.example.cube_solver.config.ApplicationConfig.defaultCubePosition
+import com.example.cube_solver.config.ApplicationConfig
+import com.example.cube_solver.config.ApplicationConfig.defaultObjectPosition
 import com.example.cube_solver.utils.isNotEmptyOrNull
 import com.example.cube_solver.utils.log
+import com.google.android.filament.Entity
+import com.google.android.filament.Material
 import com.google.android.filament.utils.Manipulator
-import com.google.android.filament.utils.ModelViewer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 class RubiksCubeViewer(
     val context: Context,
-    val surfaceView: SurfaceView,
-    val coroutineScope: CoroutineScope
+    val surfaceView: SurfaceView
 ) {
 
-    private var modelViewer: ModelViewer
-    private var modelLoader: ModelLoader
-    private val rubiksCubeManager: RubiksCubeManager
-    private var cameraManipulator: Manipulator = Manipulator.Builder()
-        .targetPosition(
-            defaultCubePosition.x,
-            defaultCubePosition.y,
-            defaultCubePosition.z
-        )
-        .viewport(surfaceView.width, surfaceView.height)
-        .build(Manipulator.Mode.ORBIT)
+    val assetViewer = AssetViewer(surfaceView)
+    private val resourceLoader = ResourceLoader(context = context, assetViewer = assetViewer)
+
 
     private val gestureDetector by lazy {
         GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
@@ -41,40 +34,70 @@ class RubiksCubeViewer(
         })
     }
 
-    init {
+    fun initialize() {
+        val indirectLight = resourceLoader.loadIndirectLight("cloud")
+        assetViewer.scene.indirectLight = indirectLight
 
-        modelViewer = ModelViewer(surfaceView, manipulator = cameraManipulator)
+        val skybox = resourceLoader.loadSkyBox("cloud")
+        assetViewer.scene.skybox = skybox
 
-        rubiksCubeManager =
-            RubiksCubeManager(modelViewer = modelViewer, coroutineScope = coroutineScope)
-        modelLoader = ModelLoader(
-            context = context,
-            modelViewer = modelViewer
-        )
-
-        modelLoader.loadGlb("RubiksCubeColored")
-        modelLoader.loadSkyBox("cloud")
-
-        coroutineScope.launch {
-            rubiksCubeManager.test()
-        }
+        val buffer = resourceLoader.loadGlb("RubiksCubeColored")
+        assetViewer.loadModelGlb(buffer)
+        assetViewer.transformToUnitCube(centerPoint = defaultObjectPosition)
     }
 
     fun handleClick(x: Float, y: Float) {
         val finalX = x.toInt()
         val finalY = (surfaceView.height - y).toInt()
 
-        modelViewer.view.pick(finalX, finalY, Executors.newSingleThreadExecutor()) { result ->
-            modelViewer.asset?.let { asset ->
+        assetViewer.view.pick(finalX, finalY, Executors.newSingleThreadExecutor()) { result ->
+            assetViewer.asset?.let { asset ->
                 val entityName = asset.getName(result.renderable)
                 entityName.log()
                 if (entityName != null &&
                     entityName.isNotEmptyOrNull() &&
                     entityName.matches(CubeFace.BLACK_MESHES).not()
                 ) {
-                    modelLoader.applyMaterial(
+                    applyMaterial(
                         renderable = result.renderable,
-                        material = modelLoader.redMaterial
+                        material = resourceLoader.redMaterial
+                    )
+                }
+            }
+        }
+    }
+
+    private fun applyMaterial(@Entity renderable: Int, material: Material) {
+        val renderableInstance = assetViewer.engine.renderableManager.getInstance(renderable)
+        assetViewer.engine.renderableManager.setMaterialInstanceAt(
+            renderableInstance,
+            0,
+            material.defaultInstance
+        )
+    }
+
+    fun makeFrontRed() {
+        assetViewer.asset?.let { asset ->
+            asset.renderableEntities.forEachIndexed { index, renderableEntity ->
+                val entityName = asset.getName(renderableEntity)
+                if (entityName into CubeFace.FRONT) {
+                    applyMaterial(
+                        renderable = renderableEntity,
+                        material = resourceLoader.redMaterial
+                    )
+                }
+            }
+        }
+    }
+
+    fun makeUpYellow() {
+        assetViewer.asset?.let { asset ->
+            asset.renderableEntities.forEachIndexed { index, renderableEntity ->
+                val entityName = asset.getName(renderableEntity)
+                if (entityName into CubeFace.UP) {
+                    applyMaterial(
+                        renderable = renderableEntity,
+                        material = resourceLoader.yellowMaterial
                     )
                 }
             }
@@ -82,13 +105,12 @@ class RubiksCubeViewer(
     }
 
     fun onTouch(v: View, event: MotionEvent) {
-        modelViewer.onTouch(v, event)
+        assetViewer.onTouch(v, event)
         gestureDetector.onTouchEvent(event)
     }
 
     fun render(frameTimeNanos: Long) {
-        modelViewer.render(frameTimeNanos)
+        assetViewer.render(frameTimeNanos)
     }
-
 }
 

@@ -9,15 +9,6 @@ enum class CubeFace(val value: String, val regex: Regex) {
     DOWN(value = "Down", regex = Regex("^[0-9]+_[dD][oO][wW][nN]$"));
 
     companion object {
-        val keywords = listOf(
-            FRONT.value,
-            BACK.value,
-            RIGHT.value,
-            LEFT.value,
-            UP.value,
-            DOWN.value,
-        )
-
         val BLACK_MESHES = Regex(".*[bB][lL][aA][cC][kK]_0$")
     }
 }
