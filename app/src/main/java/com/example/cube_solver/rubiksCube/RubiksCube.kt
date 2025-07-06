@@ -40,14 +40,6 @@ enum class RubiksMove(
     val rotationCount: Int,
     val rubiksMoveType: RubiksMoveType
 ) {
-    NONE(
-        value = "",
-        face = RubiksCubeFace.NONE,
-        axis = Float3(),
-        rotationCount = 0,
-        rubiksMoveType = RubiksMoveType.NONE
-    ),
-
     // Front Face Rotations
     F(
         value = "F",

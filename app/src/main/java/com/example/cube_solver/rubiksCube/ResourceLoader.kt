@@ -2,6 +2,7 @@ package com.example.cube_solver.rubiksCube
 
 import android.content.Context
 import com.example.cube_solver.config.ApplicationConfig
+import com.example.cube_solver.ui.RubiksCubeColors
 import com.example.cube_solver.utils.readAsset
 import com.google.android.filament.Entity
 import com.google.android.filament.IndirectLight
@@ -79,6 +80,18 @@ class ResourceLoader(
     fun loadGlb(glbName: String): ByteBuffer {
         return context.readAsset(getGlbPath(glbName = glbName))
     }
+
+    fun getMaterial(color : RubiksCubeColors) : Material {
+        return when(color) {
+            RubiksCubeColors.RED -> redMaterial
+            RubiksCubeColors.GREEN -> greenMaterial
+            RubiksCubeColors.BLUE -> blueMaterial
+            RubiksCubeColors.YELLOW -> yellowMaterial
+            RubiksCubeColors.WHITE -> whiteMaterial
+            RubiksCubeColors.ORANGE -> orangeMaterial
+        }
+    }
+
 
     fun getMaterialFromName(entityName: String): Material? {
         return when {

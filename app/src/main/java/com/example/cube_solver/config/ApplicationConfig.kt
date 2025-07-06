@@ -9,4 +9,12 @@ object ApplicationConfig {
     val aperture = 16f
     val shutterSpeed = 1f / 125f
     val sensitivity = 100f
+    var enableFreeCameraMovement = false
+    fun getFreeMovementLabel(isFreeMovement: Boolean): String {
+        return if (enableFreeCameraMovement) {
+            "Free Movement"
+        } else {
+            "Not Free Movement"
+        }
+    }
 }

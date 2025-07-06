@@ -16,6 +16,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,6 +39,11 @@ enum class RubiksCubeColors(val colorName: String, val colorCode: Color) {
 @Composable
 fun ColorPicker(modifier: Modifier = Modifier, onPick: (RubiksCubeColors) -> Unit = {}) {
     var currentSelectedPosition by rememberSaveable { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        onPick(RubiksCubeColors.entries[currentSelectedPosition])
+    }
+
     LazyRow(modifier) {
         items(RubiksCubeColors.entries.size) { index ->
             RawColorPick(

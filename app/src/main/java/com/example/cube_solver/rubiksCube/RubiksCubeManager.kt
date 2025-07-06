@@ -18,14 +18,18 @@ import com.google.android.filament.utils.rotation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-class RubiksCubeManager(
-    private val transformManager: TransformManager,
-) {
+class RubiksCubeManager(private val transformManager: TransformManager) {
 
-    private val cubeModelRepresentation = Rubiks.initialCubieIdentifiers.toMutableList()
+    private val rubiksCubeRepresentation = Rubiks.initialCubieIdentifiers.toMutableList()
 
     companion object {
         const val ONE_MOVE_ROTATION = 90f
+    }
+
+    infix fun String.into(cubeFace: RubiksCubeFace): Boolean {
+        val matchResult = RubiksCube.numberFindingRegex.find(this) ?: return false
+        val leadingNumber = matchResult.groupValues[1].toSafeInt()
+        return cubeFace.indexIdentifiers.any { rubiksCubeRepresentation[it] == leadingNumber }
     }
 
     enum class RubiksCubeFace(val indexIdentifiers: List<Int>) {
@@ -35,13 +39,6 @@ class RubiksCubeManager(
         BOTTOM(listOf(6, 7, 8, 15, 16, 17, 24, 25, 26)),
         RIGHT(listOf(2, 5, 8, 11, 14, 17, 20, 23, 26)),
         LEFT(listOf(0, 3, 6, 9, 12, 15, 18, 21, 24)),
-        NONE(listOf())
-    }
-
-    private infix fun String.into(cubeFace: RubiksCubeFace): Boolean {
-        val matchResult = RubiksCube.numberFindingRegex.find(this) ?: return false
-        val leadingNumber = matchResult.groupValues[1].toSafeInt()
-        return cubeFace.indexIdentifiers.any { cubeModelRepresentation[it] == leadingNumber }
     }
 
     private fun getEntityInstancesFromFace(asset: FilamentAsset, face: RubiksCubeFace): List<Int> {
@@ -64,7 +61,7 @@ class RubiksCubeManager(
 
         val entitiesToRotate = getEntityInstancesFromFace(asset, move.face)
 
-        if (move == RubiksMove.NONE || entitiesToRotate.isEmpty()) {
+        if (entitiesToRotate.isEmpty()) {
             scope.launch {
                 onAnimationEnd()
                 return@launch
@@ -121,7 +118,7 @@ class RubiksCubeManager(
     }
 
     private fun updateCubeRepresentation(move: RubiksMove) {
-        val ids = move.face.indexIdentifiers.map { cubeModelRepresentation[it] }
+        val ids = move.face.indexIdentifiers.map { rubiksCubeRepresentation[it] }
         val matrix = ids.toSquareMatrix(3)
         val rotated = when (move.rubiksMoveType) {
             RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
@@ -130,7 +127,7 @@ class RubiksCubeManager(
         }
         val flatten = rotated.toFlatList()
         move.face.indexIdentifiers.forEachIndexed { i, id ->
-            cubeModelRepresentation[id] = flatten[i]
+            rubiksCubeRepresentation[id] = flatten[i]
         }
     }
 

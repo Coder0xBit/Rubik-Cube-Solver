@@ -41,6 +41,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.nio.Buffer
+import kotlin.math.cos
+import kotlin.math.sin
 
 class AssetViewer(
     val engine: Engine,
@@ -269,19 +271,61 @@ class AssetViewer(
         // Add renderable entities to the scene as they become ready.
         asset?.let { populateScene(it) }
 
-        // Extract the camera basis from the helper and push it to the Filament camera.
-        cameraManipulator.getLookAt(eyePos, target, upward)
-        camera.lookAt(
-            eyePos[0], eyePos[1], eyePos[2],
-            target[0], target[1], target[2],
-            upward[0], upward[1], upward[2]
-        )
+        if (isFreeMovement) {
+            cameraManipulator.getLookAt(eyePos, target, upward)
+            camera.lookAt(
+                eyePos[0], eyePos[1], eyePos[2],
+                target[0], target[1], target[2],
+                upward[0], upward[1], upward[2]
+            )
+        } else {
+            rotateAroundAxis()
+        }
 
         // Render the scene, unless the renderer wants to skip the frame.
         if (renderer.beginFrame(swapChain!!, frameTimeNanos)) {
             renderer.render(view)
             renderer.endFrame()
         }
+    }
+
+    var azimuthDegrees = 0.0
+    var elevationDegrees = 0.0
+    var radius = 5.0
+    var isFreeMovement = false
+
+    fun updateAngle(
+        azimuth: Double = this.azimuthDegrees,
+        elevation: Double = elevationDegrees,
+        radius: Double = this.radius
+    ) {
+        this.azimuthDegrees = azimuth
+        this.elevationDegrees = elevation
+        this.radius = radius
+    }
+
+    fun rotateAroundAxis() {
+        val azimuth = Math.toRadians(azimuthDegrees)
+        val elevation = Math.toRadians(elevationDegrees)
+
+        val x = radius * sin(azimuth)
+        val y = radius * sin(elevation)
+        val z = radius * cos(azimuth)
+
+        val newEye = Float3(x.toFloat(), y.toFloat(), z.toFloat())
+        val up = Float3(0f, 1f, 0f)
+
+        camera.lookAt(
+            newEye.x.toDouble(),
+            newEye.y.toDouble(),
+            newEye.z.toDouble(),
+            defaultObjectPosition.x.toDouble(),
+            defaultObjectPosition.y.toDouble(),
+            defaultObjectPosition.z.toDouble(),
+            up.x.toDouble(),
+            up.y.toDouble(),
+            up.z.toDouble()
+        )
     }
 
     private fun populateScene(asset: FilamentAsset) {

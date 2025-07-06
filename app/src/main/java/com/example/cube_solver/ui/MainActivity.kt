@@ -8,24 +8,35 @@ import android.view.SurfaceView
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cube_solver.config.ApplicationConfig
+import com.example.cube_solver.config.ApplicationConfig.enableFreeCameraMovement
 import com.example.cube_solver.rubiksCube.RubiksCubeViewer
+import com.example.cube_solver.rubiksCube.RubiksMove
 import com.google.android.filament.utils.Utils
 import kotlinx.coroutines.launch
 
@@ -83,9 +94,6 @@ fun RubiksCubeScreen(paddingValue: PaddingValues = PaddingValues()) {
     LaunchedEffect(Unit) {
         rubiksCubeViewer.initialize()
         choreographer.postFrameCallback(frameCallback)
-        rubiksCubeViewer.assetViewer.asset?.let { rubiksCube ->
-            viewModel.startSolving(rubiksCube)
-        }
     }
 
     DisposableEffect(Unit) {
@@ -106,13 +114,76 @@ fun RubiksCubeScreen(paddingValue: PaddingValues = PaddingValues()) {
             }
         )
 
+        var showSlider by remember { mutableStateOf(false) }
+        Column(
+            modifier = Modifier
+                .padding(paddingValue.calculateTopPadding())
+                .padding(top = 20.dp)
+                .align(Alignment.TopStart)
+        ) {
+            Row {
+                Button(
+                    modifier = Modifier.padding(end = 5.dp),
+                    onClick = {
+                        rubiksCubeViewer.assetViewer.asset?.let { rubiksCube ->
+                            viewModel.startSolving(rubiksCube)
+                        }
+                    }
+                ) {
+                    Text("Test")
+                }
+
+                Button(
+                    onClick = {
+                        showSlider = !showSlider
+                        rubiksCubeViewer.assetViewer.isFreeMovement = showSlider.not()
+                    }
+                ) {
+                    val label = if (showSlider) {
+                        "Not Free Movement"
+                    } else {
+                        "Free Movement"
+                    }
+                    Text(label)
+                }
+            }
+
+            if (showSlider) {
+                var sliderValue by remember { mutableFloatStateOf(0f) }
+                Slider(
+                    value = sliderValue,
+                    onValueChange = {
+                        sliderValue = it
+                        rubiksCubeViewer.assetViewer.updateAngle(azimuth = sliderValue.toDouble())
+                    },
+                    valueRange = 0f..180f,
+                    steps = 0
+                )
+            }
+
+            LazyRow {
+                items(RubiksMove.entries.size) { index ->
+                    Button(
+                        modifier = Modifier.padding(end = 5.dp),
+                        onClick = {
+                            rubiksCubeViewer.assetViewer.asset?.let { rubiksCube ->
+                                viewModel.playMove(rubiksCube, RubiksMove.entries[index])
+                            }
+                        }
+                    ) {
+                        Text(RubiksMove.entries[index].value)
+                    }
+                }
+            }
+        }
+
         ColorPicker(
             modifier = Modifier
                 .padding(paddingValue.calculateBottomPadding())
                 .padding(bottom = 50.dp)
                 .align(Alignment.BottomCenter)
         ) {
-
+            rubiksCubeViewer.colorToBeAppliedOnCubie = it
         }
     }
 }

@@ -3,6 +3,8 @@ package com.example.cube_solver.utils
 import android.content.Context
 import android.text.BoringLayout
 import android.util.Log
+import android.widget.Toast
+import android.widget.Toast.LENGTH_LONG
 import com.google.android.filament.utils.Float3
 import com.google.android.filament.utils.Float4
 import com.google.android.filament.utils.Mat3
@@ -11,12 +13,17 @@ import com.google.android.filament.utils.Quaternion
 import com.google.android.filament.utils.rotation
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import kotlin.time.Duration
 
 fun Context.readAsset(assetName: String): ByteBuffer {
     val input = assets.open(assetName)
     val bytes = ByteArray(input.available())
     input.read(bytes)
     return ByteBuffer.wrap(bytes)
+}
+
+fun Context.toast(message: String) {
+    Toast.makeText(this, message, LENGTH_LONG).show()
 }
 
 fun String.isEmptyOrNull(): Boolean {

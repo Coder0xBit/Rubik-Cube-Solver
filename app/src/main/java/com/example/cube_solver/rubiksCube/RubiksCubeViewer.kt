@@ -5,25 +5,29 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.SurfaceView
 import android.view.View
-import com.example.cube_solver.config.ApplicationConfig
 import com.example.cube_solver.config.ApplicationConfig.defaultObjectPosition
+import com.example.cube_solver.ui.RubiksCubeColors
 import com.example.cube_solver.utils.isNotEmptyOrNull
 import com.example.cube_solver.utils.log
 import com.google.android.filament.Entity
 import com.google.android.filament.Material
-import com.google.android.filament.utils.Manipulator
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 class RubiksCubeViewer(
-    val context: Context,
-    val surfaceView: SurfaceView
+    val context: Context, val surfaceView: SurfaceView
 ) {
-
     val assetViewer = AssetViewer(surfaceView)
     private val resourceLoader = ResourceLoader(context = context, assetViewer = assetViewer)
 
+    var colorToBeAppliedOnCubie: RubiksCubeColors = RubiksCubeColors.RED
+    private val colorCountMap: MutableMap<RubiksCubeColors, Int> = mutableMapOf(
+        RubiksCubeColors.RED to 0,
+        RubiksCubeColors.GREEN to 0,
+        RubiksCubeColors.BLUE to 0,
+        RubiksCubeColors.YELLOW to 0,
+        RubiksCubeColors.WHITE to 0,
+        RubiksCubeColors.ORANGE to 0,
+    )
 
     private val gestureDetector by lazy {
         GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
@@ -41,7 +45,7 @@ class RubiksCubeViewer(
         val skybox = resourceLoader.loadSkyBox("cloud")
         assetViewer.scene.skybox = skybox
 
-        val buffer = resourceLoader.loadGlb("RubiksCubeColored")
+        val buffer = resourceLoader.loadGlb("GrayRubiksCube")
         assetViewer.loadModelGlb(buffer)
         assetViewer.transformToUnitCube(centerPoint = defaultObjectPosition)
     }
@@ -58,10 +62,15 @@ class RubiksCubeViewer(
                     entityName.isNotEmptyOrNull() &&
                     entityName.matches(CubeFace.BLACK_MESHES).not()
                 ) {
-                    applyMaterial(
-                        renderable = result.renderable,
-                        material = resourceLoader.redMaterial
-                    )
+                    colorCountMap[colorToBeAppliedOnCubie]?.let {
+                        if (it < 9) {
+                            colorCountMap[colorToBeAppliedOnCubie] = it + 1
+                            applyMaterial(
+                                renderable = result.renderable,
+                                material = resourceLoader.getMaterial(colorToBeAppliedOnCubie)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -70,9 +79,7 @@ class RubiksCubeViewer(
     private fun applyMaterial(@Entity renderable: Int, material: Material) {
         val renderableInstance = assetViewer.engine.renderableManager.getInstance(renderable)
         assetViewer.engine.renderableManager.setMaterialInstanceAt(
-            renderableInstance,
-            0,
-            material.defaultInstance
+            renderableInstance, 0, material.defaultInstance
         )
     }
 
@@ -82,8 +89,7 @@ class RubiksCubeViewer(
                 val entityName = asset.getName(renderableEntity)
                 if (entityName into CubeFace.FRONT) {
                     applyMaterial(
-                        renderable = renderableEntity,
-                        material = resourceLoader.redMaterial
+                        renderable = renderableEntity, material = resourceLoader.redMaterial
                     )
                 }
             }
@@ -96,8 +102,7 @@ class RubiksCubeViewer(
                 val entityName = asset.getName(renderableEntity)
                 if (entityName into CubeFace.UP) {
                     applyMaterial(
-                        renderable = renderableEntity,
-                        material = resourceLoader.yellowMaterial
+                        renderable = renderableEntity, material = resourceLoader.yellowMaterial
                     )
                 }
             }

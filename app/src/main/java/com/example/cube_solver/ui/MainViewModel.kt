@@ -1,14 +1,13 @@
 package com.example.cube_solver.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cube_solver.rubiksCube.AssetViewer
 import com.example.cube_solver.rubiksCube.RubiksCubeManager
 import com.example.cube_solver.rubiksCube.RubiksMove
-import com.example.cube_solver.utils.log
 import com.google.android.filament.gltfio.FilamentAsset
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -19,22 +18,53 @@ class MainViewModel(assetViewer: AssetViewer) : ViewModel() {
         RubiksCubeManager(assetViewer.engine.transformManager)
 
     private val movesQueue = LinkedList<RubiksMove>()
-    private val rubiksMoves = MutableSharedFlow<RubiksMove>(extraBufferCapacity = 1)
+    private val rubiksMoves = MutableSharedFlow<RubiksMove>(replay = 0)
+    private var isMovesPlaying = false
+
+    private var rubiksMovePlayingJob: Job? = null
 
     init {
-        movesQueue.addAll(listOf(RubiksMove.D, RubiksMove.D_TWO, RubiksMove.F, RubiksMove.B))
+        initializeMoves()
+    }
+
+    private fun initializeMoves() {
+        movesQueue.addAll(
+            listOf(
+                RubiksMove.D,
+                RubiksMove.D_TWO,
+                RubiksMove.F,
+                RubiksMove.B,
+                RubiksMove.D_APOSTROPHE,
+                RubiksMove.D
+            )
+        )
     }
 
     fun startSolving(rubiksCube: FilamentAsset) {
-        viewModelScope.launch {
-            emitNextMove()
+        if (isMovesPlaying) return
+        isMovesPlaying = true
+        if (movesQueue.isEmpty()) {
+            initializeMoves()
         }
-        viewModelScope.launch {
-            rubiksMoves.collect { move ->
-                rubiksCubeManager.playMove(rubiksCube, move, viewModelScope) {
-                    emitNextMove()
+
+        rubiksMovePlayingJob?.cancel()
+        rubiksMovePlayingJob = viewModelScope.launch {
+            launch {
+                rubiksMoves.collect { move ->
+                    rubiksCubeManager.playMove(rubiksCube, move, viewModelScope) {
+                        emitNextMove()
+                    }
                 }
             }
+            emitNextMove()
+        }
+    }
+
+    fun playMove(rubiksCube: FilamentAsset, move: RubiksMove) {
+        if (isMovesPlaying) return
+        isMovesPlaying = true
+        rubiksCubeManager.playMove(rubiksCube, move, viewModelScope) {
+            isMovesPlaying = false
         }
     }
 
@@ -42,6 +72,8 @@ class MainViewModel(assetViewer: AssetViewer) : ViewModel() {
         movesQueue.poll()?.let { move ->
             delay(200)
             rubiksMoves.emit(move)
+        } ?: run {
+            isMovesPlaying = false
         }
     }
 }
