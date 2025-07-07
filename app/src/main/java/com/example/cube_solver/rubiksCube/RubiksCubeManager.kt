@@ -17,10 +17,13 @@ import com.google.android.filament.utils.Mat4
 import com.google.android.filament.utils.rotation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class RubiksCubeManager(private val transformManager: TransformManager) {
 
     private val rubiksCubeRepresentation = Rubiks.initialCubieIdentifiers.toMutableList()
+    private val representationLock = Mutex()
 
     companion object {
         const val ONE_MOVE_ROTATION = 90f
@@ -77,10 +80,13 @@ class RubiksCubeManager(private val transformManager: TransformManager) {
         val animator = ValueAnimator.ofFloat(0f, move.rotationCount * ONE_MOVE_ROTATION).apply {
             duration = 1000L
             interpolator = AccelerateInterpolator()
+            var lastAngle = 0f
 
             addUpdateListener { animation ->
                 val currentAngle = animation.animatedValue as Float
-                rotateEntities(rotatingCubies, move.axis, currentAngle)
+                val deltaAngle = currentAngle - lastAngle
+                rotateEntities(rotatingCubies, move.axis, deltaAngle)
+                lastAngle = currentAngle
             }
 
             addListener(object : AnimatorListener {
@@ -108,26 +114,41 @@ class RubiksCubeManager(private val transformManager: TransformManager) {
         return Mat4.of(*transformMatrix)
     }
 
-    private fun rotateEntities(rotatingCubies: List<RotatingCubie>, axis: Float3, angle: Float) {
+    private fun rotateEntities(
+        rotatingCubies: List<RotatingCubie>,
+        axis: Float3,
+        deltaAngleSinceLastFrame: Float
+    ) {
         rotatingCubies.forEach { cubie ->
             val inst = transformManager.getInstance(cubie.entity)
-            val rotation = rotation(axis, angle)
-            val newTransform = cubie.initialTransform * rotation
+            val currentTransform = transformManager.getTransform(inst)
+            val deltaRotation = rotation(axis, deltaAngleSinceLastFrame)
+            val newTransform = currentTransform * deltaRotation
             transformManager.setTransform(inst, newTransform.toFloatArray())
         }
     }
 
-    private fun updateCubeRepresentation(move: RubiksMove) {
-        val ids = move.face.indexIdentifiers.map { rubiksCubeRepresentation[it] }
-        val matrix = ids.toSquareMatrix(3)
-        val rotated = when (move.rubiksMoveType) {
-            RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
-            RubiksMoveType.ANTI_CLOCKWISE -> matrix.rotateCounterclockwise(move.rotationCount)
-            RubiksMoveType.NONE -> matrix
-        }
-        val flatten = rotated.toFlatList()
-        move.face.indexIdentifiers.forEachIndexed { i, id ->
-            rubiksCubeRepresentation[id] = flatten[i]
+//    private fun rotateEntities(rotatingCubies: List<RotatingCubie>, axis: Float3, angle: Float) {
+//        rotatingCubies.forEach { cubie ->
+//            val inst = transformManager.getInstance(cubie.entity)
+//            val rotation = rotation(axis, angle)
+//            val newTransform = cubie.initialTransform * rotation
+//            transformManager.setTransform(inst, newTransform.toFloatArray())
+//        }
+//    }
+
+    private suspend fun updateCubeRepresentation(move: RubiksMove) {
+        representationLock.withLock {
+            val ids = move.face.indexIdentifiers.map { rubiksCubeRepresentation[it] }
+            val matrix = ids.toSquareMatrix(3)
+            val rotated = when (move.rubiksMoveType) {
+                RubiksMoveType.CLOCKWISE -> matrix.rotateClockwise(move.rotationCount)
+                RubiksMoveType.ANTI_CLOCKWISE -> matrix.rotateCounterclockwise(move.rotationCount)
+            }
+            val flatten = rotated.toFlatList()
+            move.face.indexIdentifiers.forEachIndexed { i, id ->
+                rubiksCubeRepresentation[id] = flatten[i]
+            }
         }
     }
 

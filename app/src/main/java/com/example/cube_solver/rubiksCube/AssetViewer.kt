@@ -28,10 +28,13 @@ import com.google.android.filament.gltfio.MaterialProvider
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.Float3
+import com.google.android.filament.utils.Float4
 import com.google.android.filament.utils.GestureDetector
 import com.google.android.filament.utils.Manipulator
 import com.google.android.filament.utils.Mat4
 import com.google.android.filament.utils.max
+import com.google.android.filament.utils.normalize
+import com.google.android.filament.utils.rotation
 import com.google.android.filament.utils.scale
 import com.google.android.filament.utils.translation
 import com.google.android.filament.utils.transpose
@@ -40,13 +43,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.Math.toRadians
 import java.nio.Buffer
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.text.toDouble
 
 class AssetViewer(
-    val engine: Engine,
-    private val uiHelper: UiHelper
+    val engine: Engine, private val uiHelper: UiHelper
 ) : android.view.View.OnTouchListener {
     var asset: FilamentAsset? = null
         private set
@@ -106,14 +110,13 @@ class AssetViewer(
     init {
         renderer = engine.createRenderer()
         scene = engine.createScene()
-        camera = engine.createCamera(engine.entityManager.create())
-            .apply {
-                setExposure(
-                    ApplicationConfig.aperture,
-                    ApplicationConfig.shutterSpeed,
-                    ApplicationConfig.sensitivity
-                )
-            }
+        camera = engine.createCamera(engine.entityManager.create()).apply {
+            setExposure(
+                ApplicationConfig.aperture,
+                ApplicationConfig.shutterSpeed,
+                ApplicationConfig.sensitivity
+            )
+        }
         view = engine.createView()
         view.scene = scene
         view.camera = camera
@@ -128,12 +131,8 @@ class AssetViewer(
         light = EntityManager.get().create()
 
         val (r, g, b) = Colors.cct(6_500.0f)
-        LightManager.Builder(LightManager.Type.DIRECTIONAL)
-            .color(r, g, b)
-            .intensity(100_000.0f)
-            .direction(0.0f, -1.0f, 0.0f)
-            .castShadows(true)
-            .build(engine, light)
+        LightManager.Builder(LightManager.Type.DIRECTIONAL).color(r, g, b).intensity(100_000.0f)
+            .direction(0.0f, -1.0f, 0.0f).castShadows(true).build(engine, light)
 
         scene.addEntity(light)
 
@@ -145,14 +144,9 @@ class AssetViewer(
         uiHelper: UiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK),
         manipulator: Manipulator? = null
     ) : this(engine, uiHelper) {
-        cameraManipulator = manipulator ?: Manipulator.Builder()
-            .targetPosition(
-                defaultObjectPosition.x,
-                defaultObjectPosition.y,
-                defaultObjectPosition.z
-            )
-            .viewport(surfaceView.width, surfaceView.height)
-            .build(Manipulator.Mode.ORBIT)
+        cameraManipulator = manipulator ?: Manipulator.Builder().targetPosition(
+            defaultObjectPosition.x, defaultObjectPosition.y, defaultObjectPosition.z
+        ).viewport(surfaceView.width, surfaceView.height).build(Manipulator.Mode.ORBIT)
 
         this.surfaceView = surfaceView
         gestureDetector = GestureDetector(surfaceView, cameraManipulator)
@@ -274,9 +268,15 @@ class AssetViewer(
         if (isFreeMovement) {
             cameraManipulator.getLookAt(eyePos, target, upward)
             camera.lookAt(
-                eyePos[0], eyePos[1], eyePos[2],
-                target[0], target[1], target[2],
-                upward[0], upward[1], upward[2]
+                eyePos[0],
+                eyePos[1],
+                eyePos[2],
+                target[0],
+                target[1],
+                target[2],
+                upward[0],
+                upward[1],
+                upward[2]
             )
         } else {
             rotateAroundAxis()
@@ -289,42 +289,55 @@ class AssetViewer(
         }
     }
 
-    var azimuthDegrees = 0.0
-    var elevationDegrees = 0.0
-    var radius = 5.0
-    var isFreeMovement = false
+    private var angleX = 0.0
+    private var angleY = 0.0
+    private var angleZ = 0.0
+    private var radius = 10.0
+
+    var isFreeMovement = true
 
     fun updateAngle(
-        azimuth: Double = this.azimuthDegrees,
-        elevation: Double = elevationDegrees,
+        angleX: Double = this.angleX,
+        angleY: Double = this.angleY,
+        angleZ: Double = this.angleZ,
         radius: Double = this.radius
     ) {
-        this.azimuthDegrees = azimuth
-        this.elevationDegrees = elevation
+        this.angleX = angleX
+        this.angleY = angleY
+        this.angleZ = angleZ
         this.radius = radius
     }
 
-    fun rotateAroundAxis() {
-        val azimuth = Math.toRadians(azimuthDegrees)
-        val elevation = Math.toRadians(elevationDegrees)
+    private fun rotateAroundAxis() {
+        val initialLocalPosition = Float3(0f, 0f, radius.toFloat())
 
-        val x = radius * sin(azimuth)
-        val y = radius * sin(elevation)
-        val z = radius * cos(azimuth)
+        val xAxis = Float3(1f, 0f, 0f)
+        val yAxis = Float3(0f, 1f, 0f)
+        val zAxis = Float3(0f, 0f, 1f)
 
-        val newEye = Float3(x.toFloat(), y.toFloat(), z.toFloat())
-        val up = Float3(0f, 1f, 0f)
+        val rotationX = rotation(xAxis, angleX.toFloat())
+        val rotationY = rotation(yAxis, angleY.toFloat())
+        val rotationZ = rotation(zAxis, angleZ.toFloat())
+
+        val totalRotationMatrix = rotationZ * rotationY * rotationX
+
+        val rotatedOffset = (totalRotationMatrix * Float4(initialLocalPosition, 1.0f)).xyz
+
+        val eyePosition = defaultObjectPosition + rotatedOffset
+
+        val initialUp = Float3(0f, 1f, 0f)
+        val cameraUp = normalize((totalRotationMatrix * Float4(initialUp, 0.0f)).xyz)
 
         camera.lookAt(
-            newEye.x.toDouble(),
-            newEye.y.toDouble(),
-            newEye.z.toDouble(),
+            eyePosition.x.toDouble(),
+            eyePosition.y.toDouble(),
+            eyePosition.z.toDouble(),
             defaultObjectPosition.x.toDouble(),
             defaultObjectPosition.y.toDouble(),
             defaultObjectPosition.z.toDouble(),
-            up.x.toDouble(),
-            up.y.toDouble(),
-            up.z.toDouble()
+            cameraUp.x.toDouble(),
+            cameraUp.y.toDouble(),
+            cameraUp.z.toDouble()
         )
     }
 
@@ -369,7 +382,9 @@ class AssetViewer(
     }
 
     fun onTouchEvent(event: MotionEvent) {
-        gestureDetector.onTouchEvent(event)
+        if (isFreeMovement) {
+            gestureDetector.onTouchEvent(event)
+        }
     }
 
     @SuppressWarnings("ClickableViewAccessibility")
@@ -400,8 +415,7 @@ class AssetViewer(
         val height = view.viewport.height
         val aspect = width.toDouble() / height.toDouble()
         camera.setLensProjection(
-            cameraFocalLength.toDouble(), aspect,
-            cameraNear.toDouble(), cameraFar.toDouble()
+            cameraFocalLength.toDouble(), aspect, cameraNear.toDouble(), cameraFar.toDouble()
         )
     }
 

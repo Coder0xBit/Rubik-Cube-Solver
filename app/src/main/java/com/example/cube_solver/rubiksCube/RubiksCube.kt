@@ -9,14 +9,14 @@ object RubiksCube {
 }
 
 /**
- this enum is providing hardcoded array of indentifiers for faces and each individual cubies (from 3d model look up in blender)
- FRONT_CUBIES are 9 each individual cubes facing front
- MIDDLE_CUBIES are 8 each individual cubes in middle of Cube
- BACK_CUBIES are 9 each individual cubes facing back
+this enum is providing hardcoded array of indentifiers for faces and each individual cubies (from 3d model look up in blender)
+FRONT_CUBIES are 9 each individual cubes facing front
+MIDDLE_CUBIES are 8 each individual cubes in middle of Cube
+BACK_CUBIES are 9 each individual cubes facing back
 
- this will only work when the cube is first loaded
+this will only work when the cube is first loaded
 
- each small cubes in 3d model of rubiks cube is named like 2_Black_0 , etc.. so this indentifier are the leading Number
+each small cubes in 3d model of rubiks cube is named like 2_Black_0 , etc.. so this indentifier are the leading Number
  */
 enum class Rubiks(val identifiers: MutableList<Int>) {
     FRONT_CUBIES(identifiers = mutableListOf(12, 24, 1, 15, 16, 4, 17, 23, 7)),
@@ -30,7 +30,7 @@ enum class Rubiks(val identifiers: MutableList<Int>) {
 }
 
 enum class RubiksMoveType {
-    NONE, CLOCKWISE, ANTI_CLOCKWISE
+    CLOCKWISE, ANTI_CLOCKWISE
 }
 
 enum class RubiksMove(

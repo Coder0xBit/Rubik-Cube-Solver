@@ -114,7 +114,7 @@ fun RubiksCubeScreen(paddingValue: PaddingValues = PaddingValues()) {
             }
         )
 
-        var showSlider by remember { mutableStateOf(false) }
+        var showSlider by remember { mutableStateOf(rubiksCubeViewer.assetViewer.isFreeMovement.not()) }
         Column(
             modifier = Modifier
                 .padding(paddingValue.calculateTopPadding())
@@ -149,14 +149,34 @@ fun RubiksCubeScreen(paddingValue: PaddingValues = PaddingValues()) {
             }
 
             if (showSlider) {
-                var sliderValue by remember { mutableFloatStateOf(0f) }
+                var sliderX by remember { mutableFloatStateOf(0f) }
+                var sliderY by remember { mutableFloatStateOf(0f) }
+                var sliderZ by remember { mutableFloatStateOf(0f) }
                 Slider(
-                    value = sliderValue,
+                    value = sliderX,
                     onValueChange = {
-                        sliderValue = it
-                        rubiksCubeViewer.assetViewer.updateAngle(azimuth = sliderValue.toDouble())
+                        sliderX = it
+                        rubiksCubeViewer.assetViewer.updateAngle(angleX = sliderX.toDouble())
                     },
-                    valueRange = 0f..180f,
+                    valueRange = 0f..360f,
+                    steps = 0
+                )
+                Slider(
+                    value = sliderY,
+                    onValueChange = {
+                        sliderY = it
+                        rubiksCubeViewer.assetViewer.updateAngle(angleY = sliderY.toDouble())
+                    },
+                    valueRange = 0f..360f,
+                    steps = 0
+                )
+                Slider(
+                    value = sliderZ,
+                    onValueChange = {
+                        sliderZ = it
+                        rubiksCubeViewer.assetViewer.updateAngle(angleZ = sliderZ.toDouble())
+                    },
+                    valueRange = 0f..360f,
                     steps = 0
                 )
             }
